@@ -202,12 +202,6 @@
 </section>
 
 <script>
-  function promisify(fn) {
-    return (...args) =>
-      new Promise((ok, bad) =>
-        fn(...args, (error, value) => (error ? bad(error) : ok(value)))
-      );
-  }
   function render(rules, fileText = localStorage.fileText) {
     const data = d3.csvParse(fileText);
     const columns = Object.keys(data[0]);
