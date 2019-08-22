@@ -352,16 +352,13 @@
     const rules = Object.fromEntries(
       new URL(document.location).searchParams.entries()
     );
-    document
-      .querySelectorAll('.example-url')
-      .forEach(
-        elem =>
-          (elem.innerHTML = `<a href='${
-            elem.textContent
-          }'><i class="black">${document.location.href
-            .replace(document.location.search, '')
-            .slice(0, -1)}</i>${elem.innerHTML}</a>`)
-      );
+    document.querySelectorAll('.example-url').forEach(elem => {
+      const base = document.location.href
+        .replace(document.location.search, '')
+        .slice(0, -1);
+      elem.innerHTML = `<a href='${base +
+        elem.textContent}'><i class="black">${base}</i>${elem.innerHTML}</a>`;
+    });
     document.querySelector('#rules').innerHTML =
       Object.entries(rules)
         .map(
