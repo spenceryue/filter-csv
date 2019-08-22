@@ -1,0 +1,316 @@
+<script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+<style>
+  body {
+    font-family: monospace;
+    line-height: 2;
+    margin: 0;
+    padding: 0;
+  }
+  section {
+    margin: 20px;
+    padding: 0;
+    width: 100%;
+  }
+  section:first-child {
+    margin-top: 0;
+  }
+  input {
+    font-family: monospace;
+  }
+  h3 {
+    margin-top: 0;
+    margin-left: calc(30px + 1ch);
+    line-height: 1;
+  }
+  h2 {
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2ch;
+    line-height: 1;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: sticky;
+    top: 0;
+    border-top: 3px solid #002b36;
+    background: #fffe;
+    padding: 20px;
+    margin: 0 -20px 0 -20px;
+    z-index: 10;
+    width: 100%;
+  }
+  table {
+    margin-top: calc(20px + 0.5rem);
+    margin-left: calc(30px + 1ch);
+    border-collapse: collapse;
+  }
+  tr:nth-child(2n) {
+    background: white;
+  }
+  tr:nth-child(2n + 1) {
+    background: #eee8d5;
+  }
+  th {
+    background: #9cd4fc;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 1.4rem;
+  }
+  th,
+  td {
+    border: 1px solid black;
+    text-align: center;
+    padding: 10px;
+    position: relative;
+  }
+  .good {
+    background: lightgreen;
+  }
+  .bad {
+    background: lightpink;
+  }
+  th::before {
+    content: attr(data-rule);
+    color: black;
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% - 5px - 0.5rem);
+    transform: translateX(-50%);
+    font-size: 1rem;
+    padding: 5px;
+    border-radius: 5px;
+    background: lightgreen;
+    border: 1px solid black;
+    text-transform: initial;
+  }
+  th.no-rule::before {
+    visibility: hidden;
+  }
+  tr {
+    position: relative;
+  }
+  tr.selected > td:first-child::after,
+  tr.excluded > td:first-child::after {
+    content: '✅';
+    position: absolute;
+    right: calc(100% + 20px + 1px);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  tr.excluded > td:first-child::after {
+    content: '❌';
+  }
+  code {
+    background: #fdf6e3;
+    color: #268bd2;
+    font-weight: bold;
+    border-radius: 0.2em;
+    padding: 0.2em;
+    margin-top: 0.5em;
+  }
+  ul {
+    margin: 0;
+  }
+  .spacer {
+    visibility: hidden;
+  }
+  .red {
+    font-style: initial;
+    color: red;
+  }
+  .orange {
+    font-style: initial;
+    color: #cb4b16;
+  }
+  .green {
+    font-style: initial;
+    color: black;
+  }
+  .blue {
+    font-style: initial;
+    color: #268bd2;
+  }
+  .black {
+    font-style: initial;
+    color: #002b36;
+  }
+</style>
+
+<section>
+  <h2>Step 1</h2>
+  Load a CSV file
+  <br />
+  <input type="file" accept=".csv" />
+</section>
+
+<section>
+  <h2>
+    Step 2
+  </h2>
+  <div>
+    Define filter rules in the URL with the following format:<br />&nbsp;&nbsp;
+    <code>
+      <i class="black">URL BASE</i><i class="black">/?</i>COLUMN NAME<i
+        class="green"
+        >=</i
+      ><i class="orange">EXPRESSION</i><i class="black">&</i>COLUMN NAME<i
+        class="green"
+        >=</i
+      ><i class="orange">EXPRESSION</i><i class="black">&</i>COLUMN NAME<i
+        class="green"
+        >=</i
+      ><i class="orange">EXPRESSION</i><i class="black">...</i></code
+    >.
+  </div>
+  <div>
+    For example,<br />&nbsp;&nbsp;
+    <code class="prepend-url"
+      ><i class="black">/?</i>L_HIGH_OTHR_PA16<i class="black">=</i
+      ><i class="orange">L_HIGH_OTHR_PA16>=2.0</i
+      ><i class="black">&</i>COLUMN_B<i class="black">=</i
+      ><i class="orange">G7_12_ATTEND16<=100.0</i
+      ><i class="black">&</i>L_HIGH_OTHR_F11<i class="black">=</i
+      ><i class="black">&</i>L_HIGH_OTHR_N15<i class="black">=</i
+      ><i class="orange">L_HIGH_OTHR_N15==0.0</i></code
+    ><br />
+    is read as:
+    <ul>
+      <li>
+        <code class="blue">L_HIGH_OTHR_PA16</code>:
+        <code class="orange">>=2.0</code>
+      </li>
+      <li>
+        <code class="blue">G7_12_ATTEND16</code>:
+        <code class="orange"><=100.0</code>
+      </li>
+      <li>
+        <code class="blue">L_HIGH_OTHR_F11</code>:
+        <code class="orange">undefined</code>
+      </li>
+      <li>
+        <code class="blue">L_HIGH_OTHR_N15</code>:
+        <code class="orange">==0.0</code>
+      </li>
+    </ul>
+  </div>
+
+  Currently <u><b>active</b></u> filter rules:
+  <ul id="rules"></ul>
+</section>
+
+<section>
+  <h2>Output</h2>
+  <div id="output">&nbsp;&nbsp;Waiting on Steps 1 & 2...</div>
+</section>
+
+<script>
+  function promisify(fn) {
+    return (...args) =>
+      new Promise((ok, bad) =>
+        fn(...args, (error, value) => (error ? bad(error) : ok(value)))
+      );
+  }
+  function render(rules, fileText = localStorage.fileText) {
+    const data = d3.csvParse(fileText);
+    const columns = Object.keys(data[0]);
+    const selected = data.filter(row =>
+      columns.every(c => isValid(c, row[c], rules))
+    );
+    const excluded = data.filter(
+      row => !columns.every(c => isValid(c, row[c], rules))
+    );
+    const good = (column, value) =>
+      column in rules && isValid(column, value, rules) ? 'class=good' : '';
+    const bad = (column, value) =>
+      column in rules && !isValid(column, value, rules) ? 'class=bad' : '';
+    const rule = column =>
+      column in rules
+        ? `data-rule='${rules[column].replace(column, '') || undefined}'`
+        : `class='no-rule'`;
+
+    document.title =
+      rules['title'] ||
+      `${localStorage.fileName} - ${selected.length} selected, ${
+        excluded.length
+      } excluded`;
+    document.querySelector('#output').innerHTML = `
+    <h3>${localStorage.fileName} - ${selected.length} selected, ${
+      excluded.length
+    } excluded</h3>
+    <table>
+      <thead>
+        <tr>
+          ${columns.map(c => `<th ${rule(c)}>${c}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${selected
+          .map(
+            row => `
+              <tr class=selected>
+                ${columns
+                  .map(
+                    c => `<td ${good(c, row[c])}>${row[c] || 'undefined'}</td>`
+                  )
+                  .join('')}
+              </tr>
+            `
+          )
+          .join('')}
+        ${excluded
+          .map(
+            row => `
+              <tr class=excluded>
+                ${columns
+                  .map(
+                    c => `<td ${bad(c, row[c])}>${row[c] || 'undefined'}</td>`
+                  )
+                  .join('')}
+              </tr>
+            `
+          )
+          .join('')}
+      <tbody>
+    </table>
+    `;
+  }
+  function isValid(column, value, rules) {
+    const rule = rules[column];
+    if (rule == null) {
+      return true;
+    }
+    const ruleWithEmpty = rule === '' ? `${column} === ''` : rule;
+    const ruleParsable = ruleWithEmpty.replace(column, 'x');
+    return new Function('x', `return ${ruleParsable}`)(value);
+  }
+  (function main() {
+    const rules = Object.fromEntries(
+      new URL(document.location).searchParams.entries()
+    );
+    document
+      .querySelectorAll('.prepend-url')
+      .forEach(
+        elem =>
+          (elem.innerHTML = `<i class="black">${document.location.href
+            .replace(document.location.search, '')
+            .slice(0, -1)}</i>${elem.innerHTML}`)
+      );
+    document.querySelector('#rules').innerHTML =
+      Object.entries(rules)
+        .map(
+          rule =>
+            `<li><code class=blue>${
+              rule[0]
+            }</code>: <code class=orange>${rule[1].replace(rule[0], '') ||
+              undefined}</code></li>`
+        )
+        .join('') || 'No rules defined.';
+    document
+      .querySelector('input[type=file]')
+      .addEventListener('change', async e => {
+        const file = e.target.files[0];
+        localStorage.fileName = file.name;
+        const fileText = (localStorage.fileText = await file.text());
+        render(rules, fileText);
+      });
+    localStorage.fileText && render(rules);
+  })();
+</script>
