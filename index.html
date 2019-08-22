@@ -5,6 +5,7 @@
     line-height: 2;
     margin: 0;
     padding: 0;
+    --scrollbar-width: 20px;
   }
   section {
     margin: 20px;
@@ -67,7 +68,7 @@
   .bad {
     background: lightpink;
   }
-  th::before {
+  th::after {
     content: attr(data-rule);
     color: black;
     position: absolute;
@@ -80,8 +81,9 @@
     background: lightgreen;
     border: 1px solid black;
     text-transform: initial;
+    z-index: 5;
   }
-  th.no-rule::before {
+  th.no-rule::after {
     visibility: hidden;
   }
   tr {
@@ -105,6 +107,15 @@
     border-radius: 0.2em;
     padding: 0.2em;
     margin-top: 0.5em;
+  }
+  a {
+    text-decoration: unset;
+    color: unset;
+  }
+  a:hover {
+    padding-bottom: 2px;
+    margin-bottom: -4px;
+    border-bottom: 2px solid cyan;
   }
   ul {
     margin: 0;
@@ -202,24 +213,24 @@
   </div>
   <div>
     For example,<br />&nbsp;&nbsp;
-    <code class="prepend-url"
+    <code class="example-url"
       ><i class="black">/?</i>L_HIGH_OTHR_PA16<i class="black">=</i
-      ><i class="orange">L_HIGH_OTHR_PA16>=2.0</i
+      ><i class="orange">L_HIGH_OTHR_PA16>=1.1</i
       ><i class="black">&</i>G7_12_ATTEND16<i class="black">=</i
-      ><i class="orange">G7_12_ATTEND16<=100.0</i
+      ><i class="orange">G7_12_ATTEND16>=1000.0</i
       ><i class="black">&</i>L_HIGH_OTHR_F11<i class="black">=</i
       ><i class="black">&</i>L_HIGH_OTHR_N15<i class="black">=</i
-      ><i class="orange">L_HIGH_OTHR_N15==0.0</i></code
+      ><i class="orange">L_HIGH_OTHR_N15==32.0||L_HIGH_OTHR_N15==51.0</i></code
     ><br />
     is read as:
     <ul>
       <li>
         <code class="blue">L_HIGH_OTHR_PA16</code>:
-        <code class="orange">>=2.0</code>
+        <code class="orange">&gt;=1.1</code>
       </li>
       <li>
         <code class="blue">G7_12_ATTEND16</code>:
-        <code class="orange"><=100.0</code>
+        <code class="orange">&gt;=1000.0</code>
       </li>
       <li>
         <code class="blue">L_HIGH_OTHR_F11</code>:
@@ -227,7 +238,7 @@
       </li>
       <li>
         <code class="blue">L_HIGH_OTHR_N15</code>:
-        <code class="orange">==0.0</code>
+        <code class="orange">==32.0||==51.0</code>
       </li>
     </ul>
   </div>
@@ -278,7 +289,8 @@
       column in rules && !isValid(column, value, rules) ? 'class=bad' : '';
     const rule = column =>
       column in rules
-        ? `data-rule='${rules[column].replace(column, '') || undefined}'`
+        ? `data-rule='${rules[column].replace(new RegExp(column, 'g'), '') ||
+            undefined}'`
         : `class='no-rule'`;
 
     document.title =
@@ -333,7 +345,7 @@
       return true;
     }
     const ruleWithEmpty = rule === '' ? `${column} === ''` : rule;
-    const ruleParsable = ruleWithEmpty.replace(column, 'x');
+    const ruleParsable = ruleWithEmpty.replace(new RegExp(column, 'g'), 'x');
     return new Function('x', `return ${ruleParsable}`)(value);
   }
   (function main() {
@@ -341,12 +353,14 @@
       new URL(document.location).searchParams.entries()
     );
     document
-      .querySelectorAll('.prepend-url')
+      .querySelectorAll('.example-url')
       .forEach(
         elem =>
-          (elem.innerHTML = `<i class="black">${document.location.href
+          (elem.innerHTML = `<a href='${
+            elem.textContent
+          }'><i class="black">${document.location.href
             .replace(document.location.search, '')
-            .slice(0, -1)}</i>${elem.innerHTML}`)
+            .slice(0, -1)}</i>${elem.innerHTML}</a>`)
       );
     document.querySelector('#rules').innerHTML =
       Object.entries(rules)
@@ -354,8 +368,10 @@
           rule =>
             `<li><code class=blue>${
               rule[0]
-            }</code>: <code class=orange>${rule[1].replace(rule[0], '') ||
-              undefined}</code></li>`
+            }</code>: <code class=orange>${rule[1].replace(
+              new RegExp(rule[0], 'g'),
+              ''
+            ) || undefined}</code></li>`
         )
         .join('') || 'No rules defined.';
     document
